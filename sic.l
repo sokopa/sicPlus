@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <unistd.h>
+#include "sic.tab.h"
 
 long long nestedComments = 0;
 long long lineCount = 1;
@@ -21,6 +22,8 @@ NLINE			[\n]
 DIGCHAR			{DIGIT}|{CHAR}
 VALID			[^\n\"\'\\]|\\n|\\t|\\\'|\\\"|\\\\|\\{HEX}{2}
 INVALID			\\[^nt\'\"\\]
+OPER			"+"|"-"|"*"|"/"|"#"|"="|"<"|">"
+SEPAR			","|";"|":"|"("|")"|"["|"]"
 
 IDENTIFIER		{LETTER}({LETTER}|{DIGIT})*
 NUMBER			{DIGIT}+
@@ -68,4 +71,27 @@ NUMBER			{DIGIT}+
 <COMMENT>[^\n]*		{ /* also nothing */ }
 "%"+[.]*		{ BEGIN(COMMENT); }
 <COMMENT>{NLINE}	{ lineCount++; BEGIN(INITIAL); }
-
+<MULCOMMENT>"<*"	{ nestedComments++; }
+<MULCOMMENT>"*>"	{ nestedComments--; if(nestedComments == 0) BEGIN(INITIAL); }
+<MULCOMMENT>"<"+[^<*\n]*	{ /* do nothing */ }
+<MULCOMMENT>"*"+[^>*\n]*	{ /* do nothing */ }
+<INITIAL><<EOF>>	{ return 0; }
+<MULCOMMENT><<EOF>>	{ yyerror("Multiline comment not terminated.");}
+{OPER}|{SEPAR}		{ return yytext[0]; }
+":="			{ return T_assign; }
+"<>"			{ return T_ineq; }
+"<="			{ return T_lthan; }
+">="			{ return T_gthan; }
+\"(\\.|[^\\"])*\"	{ yylval.v.name = (char *) malloc(sizeof(yytext)); 
+			  strcpy(yylval.v.name, yytext); 
+			  return T_string; }
+\"(\\.|[^\\"])*{NEWLINE} { yyerror("String not terminated."); }
+\'{SNL}\'		{ return T_character; }
+\'\\\\\'		{ return T_backsls; }
+\'\\"n"\'		{ return T_newline; }
+\'\\"r"\'		{ return T_carret; }
+\'\\"t"\'		{ return T_tab; }
+\'\\"0"\'		{ return T_null; }
+\'\\\'\'		{ return T_apostr; }
+\'\\\"\'		{ return T_quote; }
+\'\\"x"({HEX}{2})\'	{ return T_character; })}
