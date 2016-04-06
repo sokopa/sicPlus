@@ -94,4 +94,7 @@ NUMBER			{DIGIT}+
 \'\\"0"\'		{ return T_null; }
 \'\\\'\'		{ return T_apostr; }
 \'\\\"\'		{ return T_quote; }
-\'\\"x"({HEX}{2})\'	{ return T_character; })}
+\'\\"x"({HEX}{2})\'	{ return T_character; }
+
+
+%%
